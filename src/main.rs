@@ -1,8 +1,10 @@
 use std::env;
 use std::fs;
 
+use slint::SharedString;
+
 // TODO: Add support for other file types
-// TODO: Add a ui
+// TODO: Finish implementing the GUI -> Slint.ui
 
 struct Ebook {
     text: String,
@@ -19,7 +21,7 @@ impl Ebook {
         }
     }
 
-    fn iterate(&self) {
+    fn iterate(&self, app: &App) {
         let mut current: usize = 0;
         let mut sentence = String::new();
 
@@ -30,6 +32,8 @@ impl Ebook {
             }
             sentence.push_str(&group);
             println!("{}", sentence);
+            let s = SharedString::from(&sentence);
+            app.set_current_string(s);
             sentence.clear();
             std::thread::sleep(std::time::Duration::from_millis(self.speed as u64));
 
@@ -58,12 +62,27 @@ impl Ebook {
     }
 }
 
+slint::slint! {
+    import { Button, VerticalBox } from "std-widgets.slint";
+    export global ChangeText {}
+    export component App inherits Window {
+        in property <string> current_string: "";
+        GridLayout {
+            padding: 10px;
+            spacing: 5px;
+            Text { text: current_string; colspan: 3; }
+        }
+    }
+}
+
 fn main() {
+    let app: App = App::new().unwrap();
     let args: Vec<String> = env::args().collect();
     let text_file = &args[1];
 
     let contents = fs::read_to_string(text_file).expect("Something went wrong reading the file");
 
     let ebook = Ebook::new(contents, 4, 300);
-    ebook.iterate();
+    ebook.iterate(&app);
+    app.run().unwrap();
 }
